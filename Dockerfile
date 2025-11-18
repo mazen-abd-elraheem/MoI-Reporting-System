@@ -1,7 +1,6 @@
-
 FROM python:3.11-slim
 
-# Install system dependencies for pyodbc
+# 1. Install system dependencies for pyodbc, plus libssl-dev for driver compatibility.
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -9,14 +8,19 @@ RUN apt-get update && apt-get install -y \
     unixodbc-dev \
     curl \
     gnupg \
+    libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Microsoft ODBC Driver for SQL Server
+# 2. Install Microsoft ODBC Driver for SQL Server
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
     && curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list \
     && apt-get update \
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
     && rm -rf /var/lib/apt/lists/*
+
+# 3. FIX: Explicitly Register the Driver in /etc/odbcinst.ini
+# This ensures the unixODBC Driver Manager can find the library file, resolving the "Can't open lib" error.
+RUN echo "[ODBC Driver 18 for SQL Server]\nDescription=Microsoft ODBC Driver 18 for SQL Server\nDriver=/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.0.so.1.1\nUsageCount=1" >> /etc/odbcinst.ini
 
 WORKDIR /app
 
