@@ -1,49 +1,71 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import declarative_base
-from typing import AsyncGenerator
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base, Session
+from typing import Generator
 import urllib.parse
+from app.core.config import settings
 
-from app.core.config import get_settings
+# ==========================================
+# 🔧 Helper: Parse Azure Connection String
+# ==========================================
+def get_sqlalchemy_url(conn_str: str) -> str:
+    """
+    Converts a raw Azure SQL Connection String into a SQLAlchemy URL.
+    Example: 'Driver={...};Server=...' -> 'mssql+pyodbc:///?odbc_connect=...'
+    """
+    if not conn_str:
+        return "sqlite:///:memory:" 
+    
+    params = urllib.parse.quote_plus(conn_str)
+    return f"mssql+pyodbc:///?odbc_connect={params}"
 
-settings = get_settings()
+# ==========================================
+# 1. Operations DB (Hot Path - Writes)
+# ==========================================
+url_ops = get_sqlalchemy_url(settings.SQLALCHEMY_DATABASE_URI_OPS)
 
-# URL-encode the connection string
-params = urllib.parse.quote_plus(settings.DATABASE_CONNECTION_STRING)
+engine_ops = create_engine(
+    url_ops,
+    pool_pre_ping=True,
+    pool_size=20,
+    max_overflow=10,
+    pool_recycle=3600
+)
 
-# Use aioodbc for async ODBC connections
-DATABASE_URL = f"mssql+aioodbc:///?odbc_connect={params}"
+SessionLocalOps = sessionmaker(autocommit=False, autoflush=False, bind=engine_ops)
+BaseOps = declarative_base()
 
-# Create async engine
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=settings.DEBUG,
+# ==========================================
+# 2. Analytics DB (Cold Path - Reads)
+# ==========================================
+url_analytics = get_sqlalchemy_url(settings.SQLALCHEMY_DATABASE_URI_ANALYTICS)
+
+engine_analytics = create_engine(
+    url_analytics,
     pool_pre_ping=True,
     pool_size=5,
-    max_overflow=10,
-    pool_recycle=3600,  # Recycle connections after 1 hour
+    max_overflow=5,
+    pool_recycle=3600
 )
 
-# Async session factory
-AsyncSessionLocal = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autocommit=False,
-    autoflush=False,
-)
+SessionLocalAnalytics = sessionmaker(autocommit=False, autoflush=False, bind=engine_analytics)
+BaseAnalytics = declarative_base()
 
-# Base for declarative models
-Base = declarative_base()
+# ==========================================
+# 💉 Dependency Injection Generators
+# ==========================================
 
-# Dependency for FastAPI
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Async database session dependency"""
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
+def get_db_ops() -> Generator[Session, None, None]:
+    """Dependency for HOT path (Submitting reports)"""
+    db = SessionLocalOps()
+    try:
+        yield db
+    finally:
+        db.close()
+
+def get_db_analytics() -> Generator[Session, None, None]:
+    """Dependency for COLD path (Admin Dashboard)"""
+    db = SessionLocalAnalytics()
+    try:
+        yield db
+    finally:
+        db.close()
