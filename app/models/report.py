@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Float, DateTime, Text, ForeignKey, func, CheckConstraint
 from sqlalchemy.orm import relationship
 
-from app.core.database import BaseOps  # ✅ Uses BaseOps
+from app.core.database import BaseOps  
 
 class Report(BaseOps):
     __tablename__ = "Report"

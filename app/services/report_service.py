@@ -2,8 +2,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy.orm import Session  # ✅ Changed from AsyncSession
-from sqlalchemy import select, func  # ✅ Removed async imports
+from sqlalchemy.orm import Session  
+from sqlalchemy import select, func  
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException
 
@@ -22,11 +22,11 @@ def utcnow():
     return datetime.now(timezone.utc)
 
 class ReportService:
-    """Business logic for reports (SYNC)."""  # ✅ Changed comment
+    """Business logic for reports (SYNC)."""  
     
     @staticmethod
-    def create_report(  # ✅ Removed async
-        db: Session,  # ✅ Changed from AsyncSession
+    def create_report(  
+        db: Session,  
         report_data: ReportCreate, 
         user_id: Optional[str] = None
     ) -> ReportResponse:
@@ -62,8 +62,8 @@ class ReportService:
             attachment_orms.append(new_attachment)
         
         try:
-            db.commit()  # ✅ Removed await
-            db.refresh(db_report)  # ✅ Removed await
+            db.commit()  
+            db.refresh(db_report)  
             
             attachment_responses = [
                 {
@@ -92,17 +92,17 @@ class ReportService:
                 attachments=attachment_responses
             )
         except Exception as e:
-            db.rollback()  # ✅ Removed await
+            db.rollback()  
             raise HTTPException(
                 status_code=500, 
                 detail=f"Failed to create report: {str(e)}"
             )
 
     @staticmethod
-    def get_report(db: Session, report_id: str) -> Optional[ReportResponse]:  # ✅ Removed async
+    def get_report(db: Session, report_id: str) -> Optional[ReportResponse]:  
         """Get a single report by ID with attachments eagerly loaded."""
         
-        # ✅ Use synchronous query
+       
         report = db.query(Report).options(
             selectinload(Report.attachments)
         ).filter(Report.reportId == report_id).first()
@@ -138,7 +138,7 @@ class ReportService:
         )
     
     @staticmethod
-    def list_reports(  # ✅ Removed async
+    def list_reports(  
         db: Session, 
         skip: int = 0, 
         limit: int = 10,
@@ -147,7 +147,7 @@ class ReportService:
     ) -> ReportListResponse:
         """List reports with pagination and eager loading."""
         
-        # ✅ Use synchronous query
+        
         query = db.query(Report).options(selectinload(Report.attachments))
         
         if status:
@@ -155,9 +155,9 @@ class ReportService:
         if category:
             query = query.filter(Report.categoryId == category)
         
-        total = query.count()  # ✅ Removed await
+        total = query.count()  
         
-        reports = query.order_by(Report.createdAt.desc()).offset(skip).limit(limit).all()  # ✅ Removed await
+        reports = query.order_by(Report.createdAt.desc()).offset(skip).limit(limit).all()  
         
         report_responses = []
         for r in reports:
@@ -199,14 +199,14 @@ class ReportService:
         )
     
     @staticmethod
-    def update_report_status(  # ✅ Removed async
+    def update_report_status(  
         db: Session,
         report_id: str,
         status_update: ReportStatusUpdate
     ) -> Optional[ReportResponse]:
         """Update report status."""
         
-        # ✅ Use synchronous query
+       
         report = db.query(Report).options(
             selectinload(Report.attachments)
         ).filter(Report.reportId == report_id).first()
@@ -218,32 +218,31 @@ class ReportService:
         report.updatedAt = utcnow()
         
         try:
-            db.commit()  # ✅ Removed await
-            db.refresh(report)  # ✅ Removed await
+            db.commit()  
+            db.refresh(report)  
             
-            return ReportService.get_report(db, report_id)  # ✅ Removed await
+            return ReportService.get_report(db, report_id)  
         except Exception as e:
-            db.rollback()  # ✅ Removed await
+            db.rollback()  
             raise HTTPException(
                 status_code=500, 
                 detail=f"Failed to update report status: {str(e)}"
             )
     
     @staticmethod
-    def delete_report(db: Session, report_id: str) -> bool:  # ✅ Removed async
+    def delete_report(db: Session, report_id: str) -> bool:  
         """Delete a report."""
         
-        report = db.query(Report).filter(Report.reportId == report_id).first()  # ✅ Removed await
-        
+        report = db.query(Report).filter(Report.reportId == report_id).first()  
         if not report:
             return False
         
         try:
-            db.delete(report)  # ✅ Removed await
-            db.commit()  # ✅ Removed await
+            db.delete(report)  
+            db.commit()  
             return True
         except Exception as e:
-            db.rollback()  # ✅ Removed await
+            db.rollback()  
             raise HTTPException(
                 status_code=500, 
                 detail=f"Failed to delete report: {str(e)}"

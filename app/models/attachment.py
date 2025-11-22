@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, BigInteger, ForeignKey, CheckConstraint
 from sqlalchemy.orm import relationship
 
-from app.core.database import BaseOps  # ✅ Uses BaseOps
+from app.core.database import BaseOps  
 
 class Attachment(BaseOps):
     __tablename__ = "Attachment"

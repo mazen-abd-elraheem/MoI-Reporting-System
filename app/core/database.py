@@ -1,6 +1,6 @@
 # app/core/database.py
 
-from sqlalchemy import create_engine, text  # ✅ Added `text` import
+from sqlalchemy import create_engine, text  
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from typing import Generator
 import urllib.parse
@@ -131,7 +131,7 @@ def test_database_connections():
     """Test both database connections using text()-wrapped SQL"""
     try:
         db_ops = SessionLocalOps()
-        db_ops.execute(text("SELECT 1"))  # ✅ Wrapped in text()
+        db_ops.execute(text("SELECT 1"))  
         db_ops.close()
         logger.info("✓ Operations DB connection successful")
     except Exception as e:
@@ -141,7 +141,7 @@ def test_database_connections():
     if SessionLocalAnalytics:
         try:
             db_analytics = SessionLocalAnalytics()
-            db_analytics.execute(text("SELECT 1"))  # ✅ Wrapped in text()
+            db_analytics.execute(text("SELECT 1"))  
             db_analytics.close()
             logger.info("✓ Analytics DB connection successful")
         except Exception as e:

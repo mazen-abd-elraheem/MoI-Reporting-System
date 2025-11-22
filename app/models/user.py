@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Boolean, DateTime, func, CheckConstraint
 from sqlalchemy.orm import relationship
 
-from app.core.database import BaseOps  # ✅ Uses BaseOps
+from app.core.database import BaseOps 
 
 class User(BaseOps):
     __tablename__ = "User"

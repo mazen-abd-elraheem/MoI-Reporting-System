@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Float, DateTime, Text, Integer, Boolean, func
 
-from app.core.database import BaseAnalytics  # ✅ Uses BaseAnalytics
+from app.core.database import BaseAnalytics  
 
 class HotFactReport(BaseAnalytics):
     """

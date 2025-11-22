@@ -3,7 +3,7 @@ from typing import Optional, List
 from datetime import datetime
 from enum import Enum
 
-# --- MOCK/PLACEHOLDER ATTACHMENT SCHEMAS (Assumed structure for nested reports) ---
+
 class AttachmentCreate(BaseModel):
     blobStorageUri: str = Field(..., description="URI to the stored blob file.")
     mimeType: str = Field(..., description="MIME type of the file.")
