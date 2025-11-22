@@ -4,9 +4,9 @@ from typing import Generator
 import urllib.parse
 import logging
 
-from app.core.config import get_settings  # ✅ FIXED: Import function
+from app.core.config import get_settings  
 
-settings = get_settings()  # ✅ FIXED: Call function to get settings
+settings = get_settings()  # 
 logger = logging.getLogger(__name__)
 
 # ==========================================
