@@ -1,0 +1,23 @@
+{
+	"name": "moi_operations",
+	"properties": {
+		"annotations": [],
+		"type": "AzureSqlDatabase",
+		"typeProperties": {
+			"server": "moi-server.database.windows.net",
+			"database": "moi-database",
+			"encrypt": "mandatory",
+			"trustServerCertificate": false,
+			"authenticationType": "SQL",
+			"userName": "Mazen",
+			"password": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "DataFactoryMOI",
+					"type": "LinkedServiceReference"
+				},
+				"secretName": "datafactoryconnectionstring"
+			}
+		}
+	}
+}
