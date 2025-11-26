@@ -1,9 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    status,
+    UploadFile,
+    File,
+    Form,
+    Request
+)
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List
+from datetime import datetime, timezone
 
+# Database
 from app.core.database import get_db_ops
 
+# Schemas
 from app.schemas.report import (
     ReportCreate,
     ReportResponse,
@@ -12,9 +25,22 @@ from app.schemas.report import (
     ReportStatus,
     ReportCategory
 )
+from app.schemas.attachment import AttachmentResponse, FileType
+
+# Models
+from app.models.report import Report
+from app.models.attachment import Attachment
+
+# Services
 from app.services.report_service import ReportService
+from app.services.blob_service import BlobStorageService
 
 router = APIRouter()
+
+
+# ---------------------------------------------------------
+# REPORT CRUD
+# ---------------------------------------------------------
 
 @router.post(
     "/",
@@ -22,12 +48,59 @@ router = APIRouter()
     status_code=status.HTTP_201_CREATED,
     summary="Submit a new report"
 )
-def create_report(
-    report: ReportCreate,
+async def create_report(
+    request: Request,
+    title: str = Form(...),
+    descriptionText: str = Form(...),
+    location: str = Form(...),
+    categoryId: Optional[ReportCategory] = Form(None),
+    isAnonymous: bool = Form(False),
+    transcribedVoiceText: Optional[str] = Form(None),
+    hashedDeviceId: Optional[str] = Form(None),
+    files: List[UploadFile] = File(...), 
     db: Session = Depends(get_db_ops)
 ):
-    """Submit a new incident report"""
-    return ReportService.create_report(db, report)
+    """
+    Submit a new incident report with file attachments.
+    Returns the report with attachments including temporary download URLs.
+    """
+    
+    # 1. Validate: At least one file is required
+    if not files:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one file is required to create a report."
+        )
+
+    # 2. Prepare Report Data
+    report_data = ReportCreate(
+        title=title,
+        descriptionText=descriptionText,
+        location=location,
+        categoryId=categoryId,
+        isAnonymous=isAnonymous,
+        transcribedVoiceText=transcribedVoiceText,
+        hashedDeviceId=hashedDeviceId,
+        attachments=[]
+    )
+    
+    # 3. Get base URL for reportUrl
+    base_url = str(request.base_url).rstrip('/')
+    
+    # 4. Create Report with Files
+    user_id = None if isAnonymous else hashedDeviceId
+    report_response = await ReportService.create_report_with_files(
+        db, 
+        report_data, 
+        files,
+        user_id=user_id
+    )
+    
+    # 5. Add reportUrl to response
+    report_response.reportUrl = f"{base_url}/api/v1/reports/{report_response.reportId}"
+    
+    return report_response
+
 
 @router.get(
     "/",
@@ -41,17 +114,18 @@ def list_reports(
     category: Optional[ReportCategory] = Query(None),
     db: Session = Depends(get_db_ops)
 ):
-    """Get paginated list of reports"""
+    """Get paginated list of reports with their attachments"""
     status_value = status.value if status else None
     category_value = category.value if category else None
     
     return ReportService.list_reports(
-        db, 
-        skip=skip, 
+        db,
+        skip=skip,
         limit=limit,
         status=status_value,
         category=category_value
     )
+
 
 @router.get(
     "/{report_id}",
@@ -62,7 +136,7 @@ def get_report(
     report_id: str,
     db: Session = Depends(get_db_ops)
 ):
-    """Get a single report by its ID"""
+    """Get a single report by its ID with all attachments"""
     report = ReportService.get_report(db, report_id)
     
     if not report:
@@ -72,6 +146,7 @@ def get_report(
         )
     
     return report
+
 
 @router.put(
     "/{report_id}/status",
@@ -94,6 +169,7 @@ def update_report_status(
     
     return report
 
+
 @router.delete(
     "/{report_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -103,7 +179,7 @@ def delete_report(
     report_id: str,
     db: Session = Depends(get_db_ops)
 ):
-    """Delete a report permanently"""
+    """Delete a report permanently along with its attachments"""
     success = ReportService.delete_report(db, report_id)
     
     if not success:
@@ -113,3 +189,50 @@ def delete_report(
         )
     
     return None
+
+
+# ---------------------------------------------------------
+# ATTACHMENTS
+# ---------------------------------------------------------
+
+@router.get(
+    "/{report_id}/attachments",
+    response_model=List[AttachmentResponse],
+    summary="Get all attachments for a report"
+)
+def get_report_attachments(
+    report_id: str,
+    db: Session = Depends(get_db_ops)
+):
+    """Get all attachments associated with a report with temporary download URLs"""
+    # Verify report exists
+    report = db.query(Report).filter(Report.reportId == report_id).first()
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Report with ID {report_id} not found"
+        )
+    
+    # Get attachments
+    attachments = db.query(Attachment).filter(Attachment.reportId == report_id).all()
+    
+    # Generate download URLs
+    blob_service = BlobStorageService()
+    results = []
+    
+    for attachment in attachments:
+        download_url = blob_service.generate_download_url(attachment.blobStorageUri)
+        results.append(
+            AttachmentResponse(
+                attachmentId=attachment.attachmentId,
+                reportId=attachment.reportId,
+                blobStorageUri=attachment.blobStorageUri,
+                downloadUrl=download_url,
+                mimeType=attachment.mimeType,
+                fileType=attachment.fileType,
+                fileSizeBytes=attachment.fileSizeBytes,
+                createdAt=datetime.now(timezone.utc)  # Manual timestamp
+            )
+        )
+    
+    return results

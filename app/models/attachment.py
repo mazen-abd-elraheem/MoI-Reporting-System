@@ -1,5 +1,6 @@
-from sqlalchemy import Column, String, BigInteger, ForeignKey, CheckConstraint
+from sqlalchemy import Column, String, BigInteger, ForeignKey, CheckConstraint, DateTime
 from sqlalchemy.orm import relationship
+from datetime import datetime, timezone
 
 from app.core.database import BaseOps  
 
@@ -29,6 +30,14 @@ class Attachment(BaseOps):
         "fileSizeBytes",
         BigInteger,
         nullable=False
+    )
+    
+    # Timestamp Columns
+    createdAt = Column(
+        "createdAt",
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc)
     )
 
     # Relationship
