@@ -6,7 +6,7 @@ import logging
 
 from app.core.config import get_settings
 from app.core.database import test_database_connections, engine_ops
-from app.api.v1 import reports, admin,users
+from app.api.v1 import reports, admin,users, auth
 
 # Import models to register with SQLAlchemy (but don't use them directly)
 from app.models import user, report, attachment
@@ -87,6 +87,12 @@ app.include_router(
     tags=["Users"]
 )
 
+
+app.include_router(
+    auth.router,
+    prefix=f"/api/v1/auth",
+    tags=["Auth"]
+)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
