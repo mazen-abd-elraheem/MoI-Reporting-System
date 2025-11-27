@@ -2,7 +2,7 @@ import asyncio
 import httpx
 from sqlalchemy import text
 from app.core.config import get_settings
-from app.core.database import engine
+from app.core.database import 
 
 settings = get_settings()
 
