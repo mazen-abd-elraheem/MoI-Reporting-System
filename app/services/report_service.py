@@ -179,7 +179,7 @@ class ReportService:
             )
     
     @staticmethod
-    def get_report(db: Session, report_id: str) -> Optional[ReportResponse]:
+    def get_report(db: Session, report_id: Optional[str] = None) -> Optional[ReportResponse]:
         """
         Get a single report by ID with attachments
         
@@ -191,11 +191,14 @@ class ReportService:
             ReportResponse with all details and attachments, or None if not found
         """
         
+        if report_id:
         # Query report with eager loading of attachments
-        report = db.query(Report).options(
-            selectinload(Report.attachments)
-        ).filter(Report.reportId == report_id).first()
-        
+            report = db.query(Report).options(
+                selectinload(Report.attachments)
+            ).filter(Report.reportId == report_id).first()
+  
+
+
         if not report:
             return None
         
@@ -231,7 +234,86 @@ class ReportService:
             transcribedVoiceText=report.transcribedVoiceText,
             attachments=attachment_responses
         )
-    
+
+    @staticmethod
+    def get_report_by_user(
+        db : Session,
+        user_id : str,
+        skip: int = 0, 
+        limit: int = 10,
+        status: Optional[str] = None,
+        category: Optional[str] = None
+    ) -> Optional[ReportListResponse] :
+
+        if user_id:
+        # Query report with eager loading of attachments
+            query = db.query(Report).options(
+                selectinload(Report.attachments)
+            ).filter(Report.user_id == user_id)
+        else:
+            return None
+
+
+        # Build query with eager loading
+        query = db.query(Report).options(selectinload(Report.attachments))
+        
+        # Apply filters
+        if status:
+            query = query.filter(Report.status == status)
+        if category:
+            query = query.filter(Report.categoryId == category)
+        
+        # Get total count before pagination
+        total = query.count()
+        
+        # Apply pagination and ordering
+        reports = query.order_by(Report.createdAt.desc()).offset(skip).limit(limit).all()
+        
+        # Generate download URLs for all attachments
+        blob_service = BlobStorageService()
+        report_responses = []
+        
+        for r in reports:
+            attachment_responses = []
+            for att in r.attachments:
+                download_url = blob_service.generate_download_url(att.blobStorageUri)
+                attachment_responses.append({
+                    "attachmentId": att.attachmentId,
+                    "reportId": att.reportId,
+                    "blobStorageUri": att.blobStorageUri,
+                    "downloadUrl": download_url,
+                    "mimeType": att.mimeType,
+                    "fileType": att.fileType,
+                    "fileSizeBytes": att.fileSizeBytes,
+                    "createdAt": utcnow()  # Manual timestamp
+                })
+            
+            report_responses.append(
+                ReportResponse(
+                    reportId=r.reportId,
+                    title=r.title,
+                    descriptionText=r.descriptionText,
+                    categoryId=r.categoryId,
+                    status=r.status,
+                    location=r.locationRaw,
+                    aiConfidence=r.aiConfidence,
+                    createdAt=r.createdAt,
+                    updatedAt=r.updatedAt,
+                    userId=r.userId,
+                    transcribedVoiceText=r.transcribedVoiceText,
+                    attachments=attachment_responses
+                )
+            )
+        
+        # Calculate pagination metadata
+        return ReportListResponse(
+            reports=report_responses,
+            total=total,
+            page=(skip // limit) + 1 if limit > 0 else 1,
+            pageSize=limit,
+            totalPages=(total + limit - 1) // limit if limit > 0 else 1
+        )
+
     @staticmethod
     def list_reports(
         db: Session, 

@@ -133,7 +133,7 @@ def list_reports(
     summary="Get report by ID"
 )
 def get_report(
-    report_id: str,
+    report_id: Optional[str] = None,
     db: Session = Depends(get_db_ops)
 ):
     """Get a single report by its ID with all attachments"""
@@ -147,6 +147,29 @@ def get_report(
     
     return report
 
+@router.get(
+    "/{user_id}",
+    response_model=ReportResponse,
+    summary="Get report by user_id"
+)
+def get_report_by_user(
+    user_id : str = None,
+    db: Session = Depends(get_db_ops),
+    skip: int = 0, 
+    limit: int = 10,
+    status: Optional[str] = None,
+    category: Optional[str] = None
+):
+    """Get a single report by its ID with all attachments"""
+    reports = ReportService.get_report_by_user()
+    
+    if not reports:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Report with ID {user_id} not found"
+        )
+    
+    return reports
 
 @router.put(
     "/{report_id}/status",
