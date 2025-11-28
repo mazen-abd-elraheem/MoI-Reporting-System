@@ -66,7 +66,7 @@ def register(
     """
     return UserService.create_user(db, user_in)
 
-@router.post("/login/access-token")
+@router.post("/login")
 def login_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db_ops)
@@ -82,12 +82,8 @@ def login_access_token(
             detail="Incorrect email or password",
         )
         
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    
     
     return {
-        "access_token": create_access_token(
-            data={"sub": user.userId, "role": user.role},
-            expires_delta=access_token_expires
-        ),
-        "token_type": "bearer",
+        "user_id": user.userId 
     }

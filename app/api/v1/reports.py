@@ -51,6 +51,7 @@ router = APIRouter()
 async def create_report(
     request: Request,
     title: str = Form(...),
+    user_id: str = Form(...),
     descriptionText: str = Form(...),
     location: str = Form(...),
     categoryId: Optional[ReportCategory] = Form(None),
@@ -88,12 +89,12 @@ async def create_report(
     base_url = str(request.base_url).rstrip('/')
     
     # 4. Create Report with Files
-    user_id = None if isAnonymous else hashedDeviceId
+    userid = user_id
     report_response = await ReportService.create_report_with_files(
         db, 
         report_data, 
         files,
-        user_id=user_id
+        user_id = userid
     )
     
     # 5. Add reportUrl to response
