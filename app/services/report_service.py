@@ -236,78 +236,48 @@ class ReportService:
         )
 
     @staticmethod
-    def get_report_by_user(
-        db : Session,
-        user_id : str,
+    def list_reports(
+        db: Session, 
         skip: int = 0, 
         limit: int = 10,
         status: Optional[str] = None,
-        category: Optional[str] = None
-    ) -> Optional[ReportListResponse] :
-
-        if user_id:
-        # Query report with eager loading of attachments
-            query = db.query(Report).options(
-                selectinload(Report.attachments)
-            ).filter(Report.user_id == user_id)
-        else:
-            return None
-
-
-        # Build query with eager loading
-        query = db.query(Report).options(selectinload(Report.attachments))
+        category: Optional[str] = None,
+        user_id: Optional[str] = None  # <--- NEW PARAMETER
+    ) -> ReportListResponse:
+        """List reports with filtering."""
         
-        # Apply filters
+        # Base Query
+        stmt = select(Report).options(selectinload(Report.attachments))
+        
+        # Filters
         if status:
-            query = query.filter(Report.status == status)
+            stmt = stmt.where(Report.status == status)
         if category:
-            query = query.filter(Report.categoryId == category)
+            stmt = stmt.where(Report.categoryId == category)
+        if user_id:
+            stmt = stmt.where(Report.userId == user_id)  # <--- NEW FILTER
+            
+        # Count Query
+        query = db.query(Report)
+        if status: query = query.filter(Report.status == status)
+        if category: query = query.filter(Report.categoryId == category)
+        if user_id: query = query.filter(Report.userId == user_id) # <--- NEW COUNT FILTER
         
-        # Get total count before pagination
         total = query.count()
         
-        # Apply pagination and ordering
-        reports = query.order_by(Report.createdAt.desc()).offset(skip).limit(limit).all()
+        # Pagination
+        stmt = stmt.order_by(desc(Report.createdAt)).offset(skip).limit(limit)
         
-        # Generate download URLs for all attachments
-        blob_service = BlobStorageService()
-        report_responses = []
+        reports = db.execute(stmt).scalars().all()
         
-        for r in reports:
-            attachment_responses = []
-            for att in r.attachments:
-                download_url = blob_service.generate_download_url(att.blobStorageUri)
-                attachment_responses.append({
-                    "attachmentId": att.attachmentId,
-                    "reportId": att.reportId,
-                    "blobStorageUri": att.blobStorageUri,
-                    "downloadUrl": download_url,
-                    "mimeType": att.mimeType,
-                    "fileType": att.fileType,
-                    "fileSizeBytes": att.fileSizeBytes,
-                    "createdAt": utcnow()  # Manual timestamp
-                })
-            
-            report_responses.append(
-                ReportResponse(
-                    reportId=r.reportId,
-                    title=r.title,
-                    descriptionText=r.descriptionText,
-                    categoryId=r.categoryId,
-                    status=r.status,
-                    location=r.locationRaw,
-                    aiConfidence=r.aiConfidence,
-                    createdAt=r.createdAt,
-                    updatedAt=r.updatedAt,
-                    userId=r.userId,
-                    transcribedVoiceText=r.transcribedVoiceText,
-                    attachments=attachment_responses
-                )
-            )
+        # Map Results
+        response_list = [
+            ReportService._map_to_response(r, r.attachments) 
+            for r in reports
+        ]
         
-        # Calculate pagination metadata
         return ReportListResponse(
-            reports=report_responses,
+            reports=response_list,
             total=total,
             page=(skip // limit) + 1 if limit > 0 else 1,
             pageSize=limit,
@@ -315,8 +285,9 @@ class ReportService:
         )
 
     @staticmethod
-    def list_reports(
+    def get_report_by_user(
         db: Session, 
+        user_id: str,
         skip: int = 0, 
         limit: int = 10,
         status: Optional[str] = None,
@@ -344,6 +315,8 @@ class ReportService:
             query = query.filter(Report.status == status)
         if category:
             query = query.filter(Report.categoryId == category)
+        if user_id:
+            query = query.filter(Report.userId == user_id)
         
         # Get total count before pagination
         total = query.count()

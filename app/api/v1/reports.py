@@ -149,12 +149,12 @@ def get_report(
     return report
 
 @router.get(
-    "/{user_id}",
-    response_model=ReportResponse,
+    "/user/{user_id}",
+    response_model = ReportListResponse,
     summary="Get report by user_id"
 )
 def get_report_by_user(
-    user_id : str = None,
+    user_id :  str,
     db: Session = Depends(get_db_ops),
     skip: int = 0, 
     limit: int = 10,
@@ -162,7 +162,7 @@ def get_report_by_user(
     category: Optional[str] = None
 ):
     """Get a single report by its ID with all attachments"""
-    reports = ReportService.get_report_by_user()
+    reports = ReportService.get_report_by_user(db, user_id, skip, limit, status, category)
     
     if not reports:
         raise HTTPException(
