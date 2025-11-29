@@ -82,9 +82,14 @@ def login_access_token(
             detail="Incorrect email or password",
         )
         
-    
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     
     return {
+        "access_token": create_access_token(
+            data={"sub": user.userId, "role": user.role},
+            expires_delta=access_token_expires
+        ),
+        "token_type": "bearer",
         "user_id": user.userId,
-        "role": user.role
+        "role": user.role,
     }
