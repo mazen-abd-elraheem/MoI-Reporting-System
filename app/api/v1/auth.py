@@ -18,7 +18,7 @@ router = APIRouter()
 # Defines the "Lock" icon in Swagger UI
 # This tells FastAPI that the token can be retrieved from this URL
 oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl=f"/api/{settings.API_VERSION}/auth/login/access-token"
+    tokenUrl=f"/api/{settings.API_VERSION}/auth/login"
 )
 
 def get_current_user(
