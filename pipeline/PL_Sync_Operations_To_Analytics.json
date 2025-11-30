@@ -80,7 +80,10 @@
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
-						"sqlReaderQuery": "SELECT \n        r.reportId,\n        r.title,\n        r.descriptionText,\n        r.locationRaw,\n        r.status,\n        r.categoryId,\n        r.aiConfidence,\n        r.createdAt,\n        r.updatedAt,\n        r.userId,\n        u.role AS userRole,\n        u.isAnonymous,\n        COUNT(a.attachmentId) AS attachmentCount,\n        r.transcribedVoiceText\n    FROM [dbo].[Report] r\n    LEFT JOIN [dbo].[User] u ON r.userId = u.userId\n    LEFT JOIN [dbo].[Attachment] a ON r.reportId = a.reportId\n    WHERE r.updatedAt > '@{activity('Lookup_Old_Watermark').output.firstRow.LastExtractedValue}'\n      AND r.updatedAt <= '@{activity('Lookup_New_Watermark').output.firstRow.NewWatermark}'\n      AND r.createdAt >= DATEADD(DAY, -90, GETUTCDATE())\n    GROUP BY \n        r.reportId, r.title, r.descriptionText, r.locationRaw,\n        r.status, r.categoryId, r.aiConfidence, r.createdAt,\n        r.updatedAt, r.userId, u.role, u.isAnonymous, r.transcribedVoiceText",
+						"sqlReaderQuery": {
+							"value": "SELECT \n        r.reportId,\n        r.title,\n        r.descriptionText,\n        r.locationRaw,\n        r.status,\n        r.categoryId,\n        r.aiConfidence,\n        r.createdAt,\n        r.updatedAt,\n        r.userId,\n        u.role AS userRole,\n        u.isAnonymous,\n        COUNT(a.attachmentId) AS attachmentCount,\n        r.transcribedVoiceText\n    FROM [dbo].[Report] r\n    LEFT JOIN [dbo].[User] u ON r.userId = u.userId\n    LEFT JOIN [dbo].[Attachment] a ON r.reportId = a.reportId\n    WHERE r.updatedAt > '@{activity('Lookup_Old_Watermark').output.firstRow.LastExtractedValue}'\n      AND r.updatedAt <= '@{activity('Lookup_New_Watermark').output.firstRow.NewWatermark}'\n      AND r.createdAt >= DATEADD(DAY, -90, GETUTCDATE())\n    GROUP BY \n        r.reportId, r.title, r.descriptionText, r.locationRaw,\n        r.status, r.categoryId, r.aiConfidence, r.createdAt,\n        r.updatedAt, r.userId, u.role, u.isAnonymous, r.transcribedVoiceText",
+							"type": "Expression"
+						},
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -141,7 +144,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
-						"sqlReaderQuery": " SELECT \n        r.reportId,\n        r.title,\n        r.status,\n        r.categoryId,\n        r.createdAt,\n        r.updatedAt,\n        u.role AS userRole,\n        u.isAnonymous,\n        COUNT(a.attachmentId) AS attachmentCount,\n        r.aiConfidence\n    FROM [dbo].[Report] r\n    LEFT JOIN [dbo].[User] u ON r.userId = u.userId\n    LEFT JOIN [dbo].[Attachment] a ON r.reportId = a.reportId\n    WHERE r.createdAt < DATEADD(DAY, -90, GETUTCDATE())\n      AND NOT EXISTS (SELECT 1 FROM MOI_Analytics.cold.Fact_Reports c WHERE c.reportId = r.reportId)\n    GROUP BY \n        r.reportId, r.title, r.status, r.categoryId,\n        r.createdAt, r.updatedAt, u.role, u.isAnonymous, r.aiConfidence",
+						"sqlReaderQuery": "SELECT *\nFROM [hot].[Fact_Reports] h\nWHERE NOT EXISTS (\n    SELECT 1\n    FROM [cold].[Fact_Reports] c\n    WHERE c.reportId = h.reportId\n);\n",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -162,7 +165,7 @@
 				},
 				"inputs": [
 					{
-						"referenceName": "DS_Operations_Reports",
+						"referenceName": "DS_Analytics_Hot",
 						"type": "DatasetReference"
 					}
 				],
@@ -193,10 +196,13 @@
 				},
 				"userProperties": [],
 				"typeProperties": {
-					"storedProcedureName": "new procedure",
+					"storedProcedureName": "[dbo].[usp_UpdateWatermark]",
 					"storedProcedureParameters": {
 						"LastExtractedValue": {
-							"value": "@{activity('Lookup_New_Watermark').output.firstRow.NewWatermark}",
+							"value": {
+								"value": "@{activity('Lookup_New_Watermark').output.firstRow.NewWatermark}",
+								"type": "Expression"
+							},
 							"type": "Datetime"
 						},
 						"TableName": {
