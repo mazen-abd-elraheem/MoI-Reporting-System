@@ -1,24 +1,88 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func , extract
-from typing import List
+from sqlalchemy import func, extract
+from typing import List, Dict
 
 from app.models.analytics import HotFactReport, ColdFactReport
 from app.schemas.analytics import DashboardStatsResponse
 
 class AnalyticsService:
     """Business logic for Analytics DB queries"""
-    
+
+    # Define constants here to avoid repetition
+    TARGET_CATEGORIES = [
+        'infrastructure', 'utilities', 'crime', 'traffic', 
+        'public_nuisance', 'environmental', 'other'
+    ]
+    TARGET_STATUSES = [
+        'Submitted', 'Assigned', 'Inprogress', 'Resolved', 'Rejected'
+    ]
+
+    # ==========================================
+    # INTERNAL HELPER METHODS
+    # ==========================================
+    @staticmethod
+    def _build_empty_matrix() -> Dict:
+        """Creates the initial structure with all zeros."""
+        return {
+            cat: {stat: 0 for stat in AnalyticsService.TARGET_STATUSES} 
+            for cat in AnalyticsService.TARGET_CATEGORIES
+        }
+
+    @staticmethod
+    def _query_matrix(db: Session, model) -> Dict:
+        """
+        Generic helper to query any table (Hot or Cold) 
+        and return the Category vs Status matrix.
+        """
+        # 1. Start with 0s
+        results = AnalyticsService._build_empty_matrix()
+        
+        # 2. Query the DB
+        query_data = db.query(
+            model.categoryId,
+            model.status,
+            func.count(model.reportId).label('count')
+        ).filter(
+            model.categoryId.in_(AnalyticsService.TARGET_CATEGORIES),
+            model.status.in_(AnalyticsService.TARGET_STATUSES)
+        ).group_by(
+            model.categoryId, 
+            model.status
+        ).all()
+
+        # 3. Update the zeros with actual counts
+        for cat, status, count in query_data:
+            if cat in results and status in results[cat]:
+                results[cat][status] = count
+        
+        return results
+
+    # ==========================================
+    # PUBLIC METHODS (Endpoints use these)
+    # ==========================================
+
+    @staticmethod
+    def get_hot_stats_matrix(db: Session) -> Dict:
+        """Returns matrix for ACTIVE (Hot) reports only."""
+        return AnalyticsService._query_matrix(db, HotFactReport)
+
+    @staticmethod
+    def get_cold_stats_matrix(db: Session) -> Dict:
+        """Returns matrix for ARCHIVED (Cold) reports only."""
+        try:
+            return AnalyticsService._query_matrix(db, ColdFactReport)
+        except Exception:
+            # If cold table doesn't exist yet, return empty zeros
+            return AnalyticsService._build_empty_matrix()
+
     @staticmethod
     def get_dashboard_stats(db: Session) -> DashboardStatsResponse:
         """
         Get high-level KPIs for admin dashboard.
-        Queries the Analytics DB (hot table).
         """
-        
         # Total reports (hot + cold)
         hot_count = db.query(func.count(HotFactReport.reportId)).scalar() or 0
         
-        # Try to get cold count (may fail if cold table empty)
         try:
             cold_count = db.query(func.count(ColdFactReport.reportId)).scalar() or 0
         except:
@@ -47,6 +111,18 @@ class AnalyticsService:
         anonymous_count = db.query(
             func.count(HotFactReport.reportId)
         ).filter(HotFactReport.isAnonymous == True).scalar() or 0
+
+        # Return the response object (Fixed indentation)
+        return DashboardStatsResponse(
+            totalReports=total_reports,
+            hotReports=hot_count,
+            coldReports=cold_count,
+            statusBreakdown={row.status: row.count for row in status_counts},
+            categoryBreakdown={row.categoryId: row.count for row in category_counts},
+            avgAiConfidence=float(avg_confidence),
+            anonymousReports=anonymous_count,
+            registeredReports=hot_count - anonymous_count
+        )
 
     @staticmethod
     def get_cold_monthly_category_breakdown(db: Session):
@@ -82,20 +158,6 @@ class AnalyticsService:
             'report_month'
         ).all()
 
-
-
-
-        return DashboardStatsResponse(
-            totalReports=total_reports,
-            hotReports=hot_count,
-            coldReports=cold_count,
-            statusBreakdown={row.status: row.count for row in status_counts},
-            categoryBreakdown={row.categoryId: row.count for row in category_counts},
-            avgAiConfidence=float(avg_confidence),
-            anonymousReports=anonymous_count,
-            registeredReports=hot_count - anonymous_count
-        )
-    
     @staticmethod
     def export_csv_data(db: Session) -> List[HotFactReport]:
         """Get recent reports for CSV export"""

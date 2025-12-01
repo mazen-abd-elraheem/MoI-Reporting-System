@@ -6,7 +6,7 @@ import io
 
 from app.core.database import get_db_analytics
 from app.services.analytics_service import AnalyticsService
-from app.schemas.analytics import DashboardStatsResponse , MonthlyCategoryCount
+from app.schemas.analytics import DashboardStatsResponse , MonthlyCategoryCount , CategoryStatusStats
 
 router = APIRouter()
 
@@ -129,3 +129,28 @@ def get_hot_monthly_breakdown(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch hot monthly breakdown: {str(e)}"
         )
+
+@router.get("/dashboard/hot/stutescount", response_model=CategoryStatusStats)
+def get_hot_reports_matrix(db: Session = Depends(get_db_analytics)):
+    """
+    Get the status breakdown per category for ACTIVE (Hot) reports.
+    Used for real-time operational dashboards.
+    """
+    try:
+        data = AnalyticsService.get_hot_stats_matrix(db)
+        return CategoryStatusStats(matrix=data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching hot matrix: {str(e)}")
+
+@router.get("/dashboard/cold/stutescount", response_model=CategoryStatusStats)
+def get_cold_reports_matrix(db: Session = Depends(get_db_analytics)):
+    """
+    Get the status breakdown per category for ARCHIVED (Cold) reports.
+    Used for historical analysis.
+    """
+    try:
+        data = AnalyticsService.get_cold_stats_matrix(db)
+        return CategoryStatusStats(matrix=data)
+    except Exception as e:
+        # Fallback for if the cold table is missing or connection fails
+        raise HTTPException(status_code=500, detail=f"Error fetching cold matrix: {str(e)}")

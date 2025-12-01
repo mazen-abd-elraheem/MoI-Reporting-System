@@ -23,3 +23,7 @@ class DashboardStatsResponse(BaseModel):
 
     class Config:
         from_attributes = True
+class CategoryStatusStats(BaseModel):
+    # Dictionary where Key = Category Name, Value = Dict of Status Counts
+    # Example: {"crime": {"Resolved": 10, "Submitted": 2}}
+    matrix: Dict[str, Dict[str, int]]
