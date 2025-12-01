@@ -6,7 +6,7 @@ import io
 
 from app.core.database import get_db_analytics
 from app.services.analytics_service import AnalyticsService
-from app.schemas.analytics import DashboardStatsResponse
+from app.schemas.analytics import DashboardStatsResponse , MonthlyCategoryCount
 
 router = APIRouter()
 
@@ -73,4 +73,59 @@ def export_analytics_csv(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to export CSV: {str(e)}"
+        )
+
+@router.get(
+    "/dashboard/cold/monthly-category-breakdown",
+    summary="monthly category stats"
+)
+def get_cold_monthly_breakdown(
+    db: Session = Depends(get_db_analytics)
+):
+    try:
+        rows = AnalyticsService.get_cold_monthly_category_breakdown(db)
+
+
+        data = [
+            MonthlyCategoryCount(
+                year=row.report_year,
+                month=row.report_month,
+                category=row.categoryId,
+                count=row.count
+            )
+            for row in rows
+        ]
+
+        return data
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch cold monthly breakdown: {str(e)}"
+        )
+
+@router.get(
+    "/dashboard/hot/monthly-category-breakdown",
+    summary="category stats for the past three months"
+)
+def get_hot_monthly_breakdown(
+    db: Session = Depends(get_db_analytics)
+):
+    try:
+        rows = AnalyticsService.get_hot_monthly_category_breakdown(db)
+
+        # map each tuple to a Pydantic object
+        data = [
+            MonthlyCategoryCount(
+                year=row.report_year,
+                month=row.report_month,
+                category=row.categoryId,
+                count=row.count
+            )
+            for row in rows
+        ]
+        return data
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch hot monthly breakdown: {str(e)}"
         )

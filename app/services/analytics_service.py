@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func , extract
 from typing import List
 
 from app.models.analytics import HotFactReport, ColdFactReport
@@ -47,7 +47,44 @@ class AnalyticsService:
         anonymous_count = db.query(
             func.count(HotFactReport.reportId)
         ).filter(HotFactReport.isAnonymous == True).scalar() or 0
-        
+
+    @staticmethod
+    def get_cold_monthly_category_breakdown(db: Session):
+        """Returns (year, month, category, count) for COLD database."""
+        return db.query(
+            extract('year', ColdFactReport.createdAt).label('report_year'),
+            extract('month', ColdFactReport.createdAt).label('report_month'),
+            ColdFactReport.categoryId,
+            func.count().label('count')
+        ).group_by(
+            extract('year', ColdFactReport.createdAt),
+            extract('month', ColdFactReport.createdAt),
+            ColdFactReport.categoryId
+        ).order_by(
+            'report_year',
+            'report_month'
+        ).all()
+
+    @staticmethod
+    def get_hot_monthly_category_breakdown(db: Session):
+        """Returns (year, month, category, count) for HOT database."""
+        return db.query(
+            extract('year', HotFactReport.createdAt).label('report_year'),
+            extract('month', HotFactReport.createdAt).label('report_month'),
+            HotFactReport.categoryId,
+            func.count().label('count')
+        ).group_by(
+            extract('year', HotFactReport.createdAt),
+            extract('month', HotFactReport.createdAt),
+            HotFactReport.categoryId
+        ).order_by(
+            'report_year',
+            'report_month'
+        ).all()
+
+
+
+
         return DashboardStatsResponse(
             totalReports=total_reports,
             hotReports=hot_count,
