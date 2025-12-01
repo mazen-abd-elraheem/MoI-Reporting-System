@@ -27,3 +27,7 @@ class CategoryStatusStats(BaseModel):
     # Dictionary where Key = Category Name, Value = Dict of Status Counts
     # Example: {"crime": {"Resolved": 10, "Submitted": 2}}
     matrix: Dict[str, Dict[str, int]]
+
+class StatusCountStats(BaseModel):
+    # Example: { "Submitted": 120, "Resolved": 45, "Rejected": 2 }
+    counts: Dict[str, int]

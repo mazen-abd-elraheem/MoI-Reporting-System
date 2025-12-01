@@ -164,3 +164,40 @@ class AnalyticsService:
         return db.query(HotFactReport).order_by(
             HotFactReport.createdAt.desc()
         ).limit(10000).all()
+
+    @staticmethod
+    def _query_status_counts(db: Session, model) -> dict:
+        """Helper to count reports by status only (ignoring category)."""
+        # 1. Start with 0s
+        results = {status: 0 for status in AnalyticsService.TARGET_STATUSES}
+        
+        # 2. Query DB
+        query_data = db.query(
+            model.status,
+            func.count(model.reportId).label('count')
+        ).filter(
+            model.status.in_(AnalyticsService.TARGET_STATUSES)
+        ).group_by(
+            model.status
+        ).all()
+
+        # 3. Fill values
+        for status, count in query_data:
+            if status in results:
+                results[status] = count
+        
+        return results
+
+    @staticmethod
+    def get_hot_status_counts(db: Session) -> dict:
+        """Get status counts for ACTIVE reports"""
+        return AnalyticsService._query_status_counts(db, HotFactReport)
+
+    @staticmethod
+    def get_cold_status_counts(db: Session) -> dict:
+        """Get status counts for ARCHIVED reports"""
+        try:
+            return AnalyticsService._query_status_counts(db, ColdFactReport)
+        except Exception:
+            # Return 0s if cold table is missing
+            return {status: 0 for status in AnalyticsService.TARGET_STATUSES}

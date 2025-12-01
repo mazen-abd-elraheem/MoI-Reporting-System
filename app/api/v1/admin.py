@@ -6,7 +6,7 @@ import io
 
 from app.core.database import get_db_analytics
 from app.services.analytics_service import AnalyticsService
-from app.schemas.analytics import DashboardStatsResponse , MonthlyCategoryCount , CategoryStatusStats
+from app.schemas.analytics import DashboardStatsResponse , MonthlyCategoryCount , CategoryStatusStats , StatusCountStats
 
 router = APIRouter()
 
@@ -130,7 +130,7 @@ def get_hot_monthly_breakdown(
             detail=f"Failed to fetch hot monthly breakdown: {str(e)}"
         )
 
-@router.get("/dashboard/hot/stutescount", response_model=CategoryStatusStats)
+@router.get("/dashboard/hot/categorycount", response_model=CategoryStatusStats)
 def get_hot_reports_matrix(db: Session = Depends(get_db_analytics)):
     """
     Get the status breakdown per category for ACTIVE (Hot) reports.
@@ -142,7 +142,7 @@ def get_hot_reports_matrix(db: Session = Depends(get_db_analytics)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching hot matrix: {str(e)}")
 
-@router.get("/dashboard/cold/stutescount", response_model=CategoryStatusStats)
+@router.get("/dashboard/cold/categorycount", response_model=CategoryStatusStats)
 def get_cold_reports_matrix(db: Session = Depends(get_db_analytics)):
     """
     Get the status breakdown per category for ARCHIVED (Cold) reports.
@@ -154,3 +154,31 @@ def get_cold_reports_matrix(db: Session = Depends(get_db_analytics)):
     except Exception as e:
         # Fallback for if the cold table is missing or connection fails
         raise HTTPException(status_code=500, detail=f"Error fetching cold matrix: {str(e)}")
+
+
+@router.get("/dashboard/hot/statuscount", response_model=StatusCountStats)
+def get_hot_status_counts(db: Session = Depends(get_db_analytics)):
+    """
+    Get total count of reports per status (Submitted, Resolved, etc.)
+    from the ACTIVE database.
+    """
+    try:
+        data = AnalyticsService.get_hot_status_counts(db)
+        return StatusCountStats(counts=data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/dashboard/cold/statuscount", response_model=StatusCountStats)
+def get_cold_status_counts(db: Session = Depends(get_db_analytics)):
+    """
+    Get total count of reports per status (Submitted, Resolved, etc.)
+    from the ARCHIVED database.
+    """
+    try:
+        data = AnalyticsService.get_cold_status_counts(db)
+        return StatusCountStats(counts=data)
+    except Exception as e:
+        # Fallback to empty 0s
+        from app.services.analytics import AnalyticsService
+        empty_data = {s: 0 for s in AnalyticsService.TARGET_STATUSES}
+        return StatusCountStats(counts=empty_data)
