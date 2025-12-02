@@ -130,7 +130,10 @@ def get_hot_monthly_breakdown(
             detail=f"Failed to fetch hot monthly breakdown: {str(e)}"
         )
 
-@router.get("/dashboard/hot/categorycount", response_model=CategoryStatusStats)
+@router.get(
+"/dashboard/hot/categorycount",
+ response_model=CategoryStatusStats
+ )
 def get_hot_reports_matrix(db: Session = Depends(get_db_analytics)):
     """
     Get the status breakdown per category for ACTIVE (Hot) reports.
@@ -142,7 +145,10 @@ def get_hot_reports_matrix(db: Session = Depends(get_db_analytics)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching hot matrix: {str(e)}")
 
-@router.get("/dashboard/cold/categorycount", response_model=CategoryStatusStats)
+@router.get(
+    "/dashboard/cold/categorycount",
+     response_model=CategoryStatusStats
+     )
 def get_cold_reports_matrix(db: Session = Depends(get_db_analytics)):
     """
     Get the status breakdown per category for ARCHIVED (Cold) reports.
@@ -156,7 +162,9 @@ def get_cold_reports_matrix(db: Session = Depends(get_db_analytics)):
         raise HTTPException(status_code=500, detail=f"Error fetching cold matrix: {str(e)}")
 
 
-@router.get("/dashboard/hot/statuscount", response_model=StatusCountStats)
+@router.get(
+    "/dashboard/hot/statuscount",
+     response_model=StatusCountStats)
 def get_hot_status_counts(db: Session = Depends(get_db_analytics)):
     """
     Get total count of reports per status (Submitted, Resolved, etc.)
@@ -168,7 +176,9 @@ def get_hot_status_counts(db: Session = Depends(get_db_analytics)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/dashboard/cold/statuscount", response_model=StatusCountStats)
+@router.get(
+    "/dashboard/cold/statuscount",
+     response_model=StatusCountStats)
 def get_cold_status_counts(db: Session = Depends(get_db_analytics)):
     """
     Get total count of reports per status (Submitted, Resolved, etc.)
@@ -178,7 +188,5 @@ def get_cold_status_counts(db: Session = Depends(get_db_analytics)):
         data = AnalyticsService.get_cold_status_counts(db)
         return StatusCountStats(counts=data)
     except Exception as e:
-        # Fallback to empty 0s
-        from app.services.analytics import AnalyticsService
         empty_data = {s: 0 for s in AnalyticsService.TARGET_STATUSES}
         return StatusCountStats(counts=empty_data)
