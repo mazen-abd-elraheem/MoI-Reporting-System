@@ -3,10 +3,11 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 import csv
 import io
+from typing import List
 
-from app.core.database import get_db_analytics
+from app.core.database import get_db_analytics , get_db_ops
 from app.services.analytics_service import AnalyticsService
-from app.schemas.analytics import DashboardStatsResponse , MonthlyCategoryCount , CategoryStatusStats , StatusCountStats
+from app.schemas.analytics import DashboardStatsResponse , MonthlyCategoryCount , CategoryStatusStats , StatusCountStats     
 
 router = APIRouter()
 

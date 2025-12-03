@@ -1,9 +1,13 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func, extract
-from typing import List, Dict
+from sqlalchemy import func , extract , case
+from typing import List, Dict, Any, Tuple
 
+
+from app.models.user import User
 from app.models.analytics import HotFactReport, ColdFactReport
 from app.schemas.analytics import DashboardStatsResponse
+from app.models.report import Report
+
 
 class AnalyticsService:
     """Business logic for Analytics DB queries"""

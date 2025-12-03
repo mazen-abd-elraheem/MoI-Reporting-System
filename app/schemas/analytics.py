@@ -1,5 +1,9 @@
 from pydantic import BaseModel
 from typing import Dict, List
+from app.schemas.user import UserDemographicResponse,UserListResponse
+
+
+
 
 class MonthlyCategoryCount(BaseModel):
     year: int
@@ -20,6 +24,8 @@ class DashboardStatsResponse(BaseModel):
     registeredReports: int
     
     monthlyCategoryCounts: List[MonthlyCategoryCount]
+    demographiCounts : List[UserDemographicResponse]
+    UsersList : List[UserListResponse]
 
     class Config:
         from_attributes = True

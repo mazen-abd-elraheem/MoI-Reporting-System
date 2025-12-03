@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     BLOB_CONTAINER_NAME: str = "report-attachments"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    ALLOWED_ORIGINS: list = ["http://localhost:3000", "http://localhost:8080", "capacitor://localhost"]
+    ALLOWED_ORIGINS: list = ["http://localhost:3000", "http://localhost:8080", "http://localhost:56336", "capacitor://localhost"]
     RATE_LIMIT_PER_MINUTE: int = 60
 
     class Config:

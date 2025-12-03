@@ -47,8 +47,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
-    allow_credentials=True,
+    allow_origins = settings.ALLOWED_ORIGINS,
+    allow_credentials = True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -68,6 +68,7 @@ async def health_check():
             "analytics": "connected" if settings.SQLALCHEMY_DATABASE_URI_ANALYTICS else "not configured"
         }
     }
+
 
 # Register routers
 app.include_router(
