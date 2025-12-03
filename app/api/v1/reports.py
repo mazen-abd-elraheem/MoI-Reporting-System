@@ -15,6 +15,8 @@ from datetime import datetime, timezone
 
 # Database
 from app.core.database import get_db_ops
+from app.api.v1.auth import get_current_user
+from app.models.user import User
 
 # Schemas
 from app.schemas.report import (
@@ -59,7 +61,8 @@ async def create_report(
     transcribedVoiceText: Optional[str] = Form(None),
     hashedDeviceId: Optional[str] = Form(None),
     files: List[UploadFile] = File(...), 
-    db: Session = Depends(get_db_ops)
+    db: Session = Depends(get_db_ops),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Submit a new incident report with file attachments.
@@ -113,7 +116,9 @@ def list_reports(
     limit: int = Query(10, ge=1, le=100),
     status: Optional[ReportStatus] = Query(None),
     category: Optional[ReportCategory] = Query(None),
-    db: Session = Depends(get_db_ops)
+    db: Session = Depends(get_db_ops),
+    current_user: User = Depends(get_current_user)
+
 ):
     """Get paginated list of reports with their attachments"""
     status_value = status.value if status else None
@@ -135,7 +140,8 @@ def list_reports(
 )
 def get_report(
     report_id: Optional[str] = None,
-    db: Session = Depends(get_db_ops)
+    db: Session = Depends(get_db_ops),
+    current_user: User = Depends(get_current_user)
 ):
     """Get a single report by its ID with all attachments"""
     report = ReportService.get_report(db, report_id)
@@ -159,7 +165,8 @@ def get_report_by_user(
     skip: int = 0, 
     limit: int = 10,
     status: Optional[str] = None,
-    category: Optional[str] = None
+    category: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
 ):
     """Get a single report by its ID with all attachments"""
     reports = ReportService.get_report_by_user(db, user_id, skip, limit, status, category)
@@ -180,7 +187,8 @@ def get_report_by_user(
 def update_report_status(
     report_id: str,
     status_update: ReportStatusUpdate,
-    db: Session = Depends(get_db_ops)
+    db: Session = Depends(get_db_ops),
+    current_user: User = Depends(get_current_user)
 ):
     """Update the status of a report"""
     report = ReportService.update_report_status(db, report_id, status_update)
@@ -201,7 +209,9 @@ def update_report_status(
 )
 def delete_report(
     report_id: str,
-    db: Session = Depends(get_db_ops)
+    db: Session = Depends(get_db_ops),
+    current_user: User = Depends(get_current_user)
+
 ):
     """Delete a report permanently along with its attachments"""
     success = ReportService.delete_report(db, report_id)
@@ -226,7 +236,9 @@ def delete_report(
 )
 def get_report_attachments(
     report_id: str,
-    db: Session = Depends(get_db_ops)
+    db: Session = Depends(get_db_ops),
+    current_user: User = Depends(get_current_user)
+
 ):
     """Get all attachments associated with a report with temporary download URLs"""
     # Verify report exists

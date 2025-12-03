@@ -5,9 +5,11 @@ import csv
 import io
 from typing import List
 
+from app.api.v1.auth import get_current_user
 from app.core.database import get_db_analytics , get_db_ops
 from app.services.analytics_service import AnalyticsService
 from app.schemas.analytics import DashboardStatsResponse , MonthlyCategoryCount , CategoryStatusStats , StatusCountStats     
+from app.models.user import User
 
 router = APIRouter()
 
@@ -17,7 +19,9 @@ router = APIRouter()
     summary="Get Admin Dashboard KPIs"
 )
 def get_dashboard_stats(
-    db: Session = Depends(get_db_analytics)
+    db: Session = Depends(get_db_analytics),
+    current_user: User = Depends(get_current_user)
+
 ):
     """
     Get high-level statistics for the admin dashboard.
@@ -36,7 +40,9 @@ def get_dashboard_stats(
     summary="Export data to CSV"
 )
 def export_analytics_csv(
-    db: Session = Depends(get_db_analytics)
+    db: Session = Depends(get_db_analytics),
+    current_user: User = Depends(get_current_user)
+
 ):
     """Download a CSV file of recent reports for offline analysis"""
     try:
@@ -81,7 +87,9 @@ def export_analytics_csv(
     summary="monthly category stats"
 )
 def get_cold_monthly_breakdown(
-    db: Session = Depends(get_db_analytics)
+    db: Session = Depends(get_db_analytics),
+    current_user: User = Depends(get_current_user)
+
 ):
     try:
         rows = AnalyticsService.get_cold_monthly_category_breakdown(db)
@@ -109,7 +117,9 @@ def get_cold_monthly_breakdown(
     summary="category stats for the past three months"
 )
 def get_hot_monthly_breakdown(
-    db: Session = Depends(get_db_analytics)
+    db: Session = Depends(get_db_analytics),
+    current_user: User = Depends(get_current_user)
+
 ):
     try:
         rows = AnalyticsService.get_hot_monthly_category_breakdown(db)
@@ -135,7 +145,8 @@ def get_hot_monthly_breakdown(
 "/dashboard/hot/categorycount",
  response_model=CategoryStatusStats
  )
-def get_hot_reports_matrix(db: Session = Depends(get_db_analytics)):
+
+def get_hot_reports_matrix(db: Session = Depends(get_db_analytics),current_user: User = Depends(get_current_user)):
     """
     Get the status breakdown per category for ACTIVE (Hot) reports.
     Used for real-time operational dashboards.
@@ -150,7 +161,7 @@ def get_hot_reports_matrix(db: Session = Depends(get_db_analytics)):
     "/dashboard/cold/categorycount",
      response_model=CategoryStatusStats
      )
-def get_cold_reports_matrix(db: Session = Depends(get_db_analytics)):
+def get_cold_reports_matrix(db: Session = Depends(get_db_analytics),current_user: User = Depends(get_current_user)):
     """
     Get the status breakdown per category for ARCHIVED (Cold) reports.
     Used for historical analysis.
@@ -166,7 +177,7 @@ def get_cold_reports_matrix(db: Session = Depends(get_db_analytics)):
 @router.get(
     "/dashboard/hot/statuscount",
      response_model=StatusCountStats)
-def get_hot_status_counts(db: Session = Depends(get_db_analytics)):
+def get_hot_status_counts(db: Session = Depends(get_db_analytics),current_user: User = Depends(get_current_user)):
     """
     Get total count of reports per status (Submitted, Resolved, etc.)
     from the ACTIVE database.
@@ -180,7 +191,7 @@ def get_hot_status_counts(db: Session = Depends(get_db_analytics)):
 @router.get(
     "/dashboard/cold/statuscount",
      response_model=StatusCountStats)
-def get_cold_status_counts(db: Session = Depends(get_db_analytics)):
+def get_cold_status_counts(db: Session = Depends(get_db_analytics),current_user: User = Depends(get_current_user)):
     """
     Get total count of reports per status (Submitted, Resolved, etc.)
     from the ARCHIVED database.
